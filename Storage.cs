@@ -64,7 +64,11 @@ namespace _3LW
                 _changesHistory.Add(change);
             else
             {
-                _changesHistory.RemoveRange(_current + 1, _changesHistory.Count - _current + 1);
+                if (_current == -1)
+                    _changesHistory.Clear();
+                else
+                    _changesHistory.RemoveRange(_current + 1, _changesHistory.Count - (_current + 1));
+
                 _changesHistory.Add(change);
             }
 
