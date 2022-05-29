@@ -2,6 +2,9 @@
 
 namespace _3LW
 {
+    /// <summary>
+    /// Container for coordinates with several basic checks
+    /// </summary>
     internal struct GameCoordinate
     {
         public uint Y { get; set; }
@@ -10,23 +13,30 @@ namespace _3LW
 
         public GameCoordinate(Tuple<uint, uint, uint> tuple)
         {
-            Y = tuple.Item1;
-            X = tuple.Item2;
+            X = tuple.Item1;
+            Y = tuple.Item2;
             FieldHeight = tuple.Item3;
         }
 
+        /// <summary>
+        /// Construct coordinate by x,y without checking x,y is out
+        /// of bounds the game field 
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        /// <param name="fieldHeight"></param>
         public GameCoordinate(uint x, uint y, uint fieldHeight)
         {
             if (fieldHeight == 0)
                 throw new ArgumentException("Can't be equal zero", "size");
-            Y = x;
-            X = y;
+            X = x;
+            Y = y;
             FieldHeight = fieldHeight;
         }
 
         public static implicit operator GameCoordinate(GamePosition position)
         {
-            return new GameCoordinate(position.Value / position.FieldHeight, position.Value % position.FieldHeight, position.FieldHeight);
+            return new GameCoordinate(position.Value % position.FieldHeight,  position.Value / position.FieldHeight, position.FieldHeight);
         }
 
         public static GameCoordinate operator -(GameCoordinate left, GameCoordinate right)
@@ -38,10 +48,11 @@ namespace _3LW
                 throw new ArgumentException("Right operand must be not greater than left, and fieldSize must be equal", "right");
             }
 
-            return new GameCoordinate(left.Y - right.Y, left.X - right.X, left.FieldHeight);
+            return new GameCoordinate(left.X - right.X, left.Y - right.Y, left.FieldHeight);
         }
 
         public static bool operator ==(GameCoordinate a, GameCoordinate b) => a.Y == b.Y && a.X == b.X && a.FieldHeight == b.FieldHeight;
+
         public static bool operator !=(GameCoordinate a, GameCoordinate b) => !(a == b);
 
         public static implicit operator GameCoordinate((uint, uint, uint) tuple)
