@@ -12,14 +12,17 @@ namespace _3LW
 
     internal class Game
     {
+        private bool _isCanUndo;
+        private bool _isCanRedo;
+
         private readonly Storage _storage;
         private static Random _rand;
         private readonly Func<long, long, bool> _defaultCoordinateChecker;
         private readonly Dictionary<GameDifficulty, int> _difficultyMovesCount = new Dictionary<GameDifficulty, int>
         {
-            {GameDifficulty.Easy, 2 },
+            {GameDifficulty.Easy, 25 },
             {GameDifficulty.Normal, 150 },
-            {GameDifficulty.Hard,20000 }
+            {GameDifficulty.Hard, 20000 }
         };
 
         public uint FieldHeight { get; private set; }
@@ -28,6 +31,7 @@ namespace _3LW
             get { return FieldHeight; }
             private set { FieldHeight = value; }
         }
+
         public GameCoordinate EmptyCell { get; private set; }
         public uint[,] Field { get; }
         public uint MoveCount { get; private set; }
@@ -46,14 +50,38 @@ namespace _3LW
             GameStatus = Status.NotBeginned;
 
             _storage = new Storage();
+            _isCanUndo = false;
+            _isCanRedo = false;
+
             _rand = new Random();
-            _defaultCoordinateChecker = (X, Y) => 0 <= X && X < FieldWidth && 0 <= Y && Y < FieldHeight;
+            _defaultCoordinateChecker = (X, Y) => (0 <= X) && (X < FieldWidth) && (0 <= Y) && (Y < FieldHeight);
+        }
+
+        public void Finish()
+        {
+            _storage.Clear();
+            _isCanUndo = false;
+            _isCanRedo = false;
+
+            MoveCount = 0;
+            GameStatus = Status.Finished;
         }
 
         public bool IsGameFinished() => GameStatus == Status.Finished;
 
+        public bool IsValidPosition(GamePosition position)
+        {
+            GameCoordinate coordinate = position;
+            return IsValidCoordinate(coordinate);
+        }
+
+        public bool IsValidCoordinate(GameCoordinate coordinate) => _defaultCoordinateChecker(coordinate.X, coordinate.Y);
+
         public void Start(GameDifficulty level)
         {
+            if (GameStatus == Status.Running)
+                Finish();
+
             InitField();
             EmptyCellUpdate();
             int moveCount = _difficultyMovesCount[level];
@@ -73,26 +101,30 @@ namespace _3LW
         }
         public uint GetValue(GameCoordinate coordinate)
         {
-            if (coordinate.Y > FieldHeight || coordinate.X > FieldHeight) throw new ArgumentOutOfRangeException();
+            if (coordinate.Y >= FieldHeight || coordinate.X >= FieldWidth)
+                throw new ArgumentOutOfRangeException("Cannot get value out of bounds");
 
-            return Field[coordinate.Y, coordinate.X];
+            return Field[coordinate.X, coordinate.Y];
         }
 
-        public void EmptyCellMove(GameCoordinate a)
+        public void EmptyCellMove(GameCoordinate to)
         {
-            DoEmptyCellMove(a, isInitialization: false);
+            DoEmptyCellMove(to, isInitialization: false);
         }
 
-        public bool IsCanUndo() => GameStatus == Status.Running && _storage.IsExistPreviousMove();
+        public bool IsCanUndo() => _isCanUndo;
 
         public Storage.FieldChange EmptyCellMoveUndo()
         {
             Storage.FieldChange change;
-            if (_storage.IsExistPreviousMove())
+            if (_isCanUndo)
             {
                 change = _storage.GetPreviousMove();
                 Swap(new GamePosition(change.NewPosition, FieldHeight), new GamePosition(change.OldPosition, FieldHeight), false);
                 --MoveCount;
+
+                _isCanUndo = GameStatus == Status.Running && _storage.IsExistPreviousMove();
+                _isCanRedo = GameStatus == Status.Running && _storage.IsExistNextMove();
 
                 return change;
             }
@@ -103,15 +135,18 @@ namespace _3LW
             }
         }
 
-        public bool IsCanRedo() => GameStatus == Status.Running && _storage.IsExistNextMove();
+        public bool IsCanRedo() => _isCanRedo;
 
         public Storage.FieldChange EmptyCellMoveRedo()
         {
-            if (_storage.IsExistNextMove())
+            if (_isCanRedo)
             {
                 Storage.FieldChange change = _storage.GetNextMove();
                 Swap(new GamePosition(change.NewPosition, FieldHeight), new GamePosition(change.OldPosition, FieldHeight), false);
                 ++MoveCount;
+
+                _isCanUndo = GameStatus == Status.Running && _storage.IsExistPreviousMove();
+                _isCanRedo = GameStatus == Status.Running && _storage.IsExistNextMove();
 
                 return new Storage.FieldChange(
                     new GamePosition(change.NewPosition, FieldHeight),
@@ -131,10 +166,17 @@ namespace _3LW
             SetValue(a, GetValue(b), isInitialization);
             SetValue(b, buffer, isInitialization);
 
-            EmptyCellUpdate();
+            if (a == EmptyCell)
+                EmptyCell = b;
+            else if (b == EmptyCell)
+                EmptyCell = a;
 
             if (!isInitialization && IsGameFinishedCheck())
+            {
                 GameStatus = Status.Finished;
+                _isCanRedo = false;
+                _isCanUndo = false;
+            }
         }
         private void EmptyCellMoveRandom()
         {
@@ -191,25 +233,26 @@ namespace _3LW
 
         private void InitField()
         {
-            for (uint x = 0; x < FieldHeight; x++)
+            for (uint x = 0; x < FieldWidth; x++)
             {
                 for (uint y = 0; y < FieldHeight; y++)
                 {
                     Field[x, y] = ((GamePosition)new GameCoordinate(x, y, FieldHeight)).Value + 1;
                 }
             }
-            Field[FieldHeight - 1, FieldWidth - 1] = 0;
+            Field[FieldWidth - 1, FieldHeight - 1] = 0;
         }
 
         private void EmptyCellUpdate()
         {
-            for (uint x = 0; x < FieldHeight; x++)
+            for (uint x = 0; x < FieldWidth; x++)
             {
                 for (uint y = 0; y < FieldHeight; y++)
                 {
                     if (Field[x, y] == 0)
                     {
                         EmptyCell = new GameCoordinate(x, y, FieldHeight);
+                        break;
                     }
                 }
             }
@@ -220,11 +263,11 @@ namespace _3LW
         }
         private void SetValue(GameCoordinate coordinate, uint value, bool force)
         {
-            if (coordinate.Y > FieldHeight || coordinate.X > FieldHeight)
+            if (coordinate.Y > FieldHeight || coordinate.X > FieldWidth)
                 throw new ArgumentOutOfRangeException();
             if (GameStatus != Status.Running && !force)
                 throw new InvalidOperationException("Cannot modify field if game not running");
-            Field[coordinate.Y, coordinate.X] = value;
+            Field[coordinate.X, coordinate.Y] = value;
         }
 
         private bool IsGameFinishedCheck()
@@ -251,15 +294,15 @@ namespace _3LW
                 throw new InvalidOperationException("Cannot check status of not beginned game");
         }
 
-        private void DoEmptyCellMove(GameCoordinate a, bool isInitialization)
+        private void DoEmptyCellMove(GameCoordinate to, bool isInitialization)
         {
             bool diffX = false, diffY = false;
 
-            if (IsPointsOnSameDiagonal(EmptyCell, a))
+            if (IsPointsOnSameDiagonal(EmptyCell, to))
                 return;
             try
             {
-                GameCoordinate diff = (EmptyCell > a) ? EmptyCell - a : a - EmptyCell;
+                GameCoordinate diff = (EmptyCell > to) ? EmptyCell - to : to - EmptyCell;
 
                 diffY = diff.Y == 1 && diff.X == 0;
                 diffX = diff.X == 1 && diff.Y == 0;
@@ -272,10 +315,14 @@ namespace _3LW
             if (diffX || diffY)
             {
                 if (!isInitialization)
-                    _storage.AddMove(EmptyCell, a);
-                Swap(EmptyCell, a, isInitialization);
+                {
+                    _storage.AddMove(EmptyCell, to);
+                    _isCanUndo = GameStatus == Status.Running && _storage.IsExistPreviousMove();
+                    _isCanRedo = GameStatus == Status.Running && _storage.IsExistNextMove();
 
-                ++MoveCount;
+                    ++MoveCount;
+                }
+                Swap(EmptyCell, to, isInitialization);
             }
         }
 
