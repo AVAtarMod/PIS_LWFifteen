@@ -76,17 +76,15 @@ namespace _3LW
         public void RefreshGrid()
         {
             uint[,] field = _game.Field;
-            uint width = (uint)field.GetLength(0);
-            uint heigth = (uint)field.Length / width;
-            for (uint x = 0; x < width; x++)
+            for (uint x = 0; x < _game.FieldWidth; x++)
             {
-                for (uint y = 0; y < heigth; y++)
+                for (uint y = 0; y < _game.FieldHeight; y++)
                 {
-                    GamePosition position = new GameCoordinate(x, y, heigth);
+                    GamePosition position = new GameCoordinate(x, y, _game.FieldHeight);
+                    Button tmp = _buttonsArray[(int)position.Value];
                     uint value = field[x, y];
                     if (value != 0)
                     {
-                        Button tmp = _buttonsArray[(int)position.Value];
                         tmp.Text = $"{value}";
                         if (!tmp.Visible)
                             tmp.Show();
@@ -95,8 +93,6 @@ namespace _3LW
                         _buttonsArray[(int)position.Value].Hide();
                 }
             }
-
-            table.Refresh();
         }
 
         private void StartMenu_Click(object sender, System.EventArgs e)
@@ -109,6 +105,9 @@ namespace _3LW
             _game.Start(_difficulty);
             RefreshGrid();
             _timeStartGame = DateTime.Now;
+            if (gameTimer.Enabled)
+                gameTimer.Stop();
+
             gameTimer.Start();
             _buttonsArray.ForEach(i => i.Enabled = true);
 
@@ -121,13 +120,30 @@ namespace _3LW
             button.Select();
 
             _game.EmptyCellMove(position);
-            statusBarMoveCount.Text = $"{_barMoveTemplate}{_game.MoveCount}";
             RefreshGrid();
 
+            UpdateStatusBar(false);
             UpdateHistoryButtonsStatus();
 
             if (_game.IsGameFinished())
                 GameFinish();
+        }
+
+        private void UpdateStatusBar(bool isFinish)
+        {
+            statusBarMoveCount.Text = $"{_barMoveTemplate}{_game.MoveCount}";
+
+            TimeSpan diff = DateTime.Now - _timeStartGame;
+            string timeString = "";
+            if (diff.Hours > 0)
+                timeString = $"{diff.Hours} ч. ";
+            if (diff.Minutes > 0)
+                timeString += $"{diff.Minutes} мин. ";
+
+            timeString += (!isFinish) ? $"{diff.Seconds} сек." : $"{diff.Seconds}.{ diff.Milliseconds / 10} сек";
+
+            statusBarTimer.Text = $"{_barTimerTemplate}{timeString}";
+            
         }
 
         private void UpdateHistoryButtonsStatus()
@@ -149,6 +165,8 @@ namespace _3LW
         private void GameFinish()
         {
             _buttonsArray.ForEach(i => i.Enabled = false);
+            UpdateStatusBar(true);
+            UpdateHistoryButtonsStatus();
             gameTimer.Stop();
             MessageBox.Show("Поздравлем! Вы победили!");
         }
@@ -160,7 +178,7 @@ namespace _3LW
                 Button current = (Button)sender;
                 Button previuos = _buttonsArray[(GamePosition)_game.EmptyCell];
 
-                GamePosition position = (uint.Parse(current.Tag.ToString()), _game.FieldHeight);
+                GamePosition position = new GamePosition(uint.Parse(current.Tag.ToString()), _game.FieldHeight);
 
                 Shift(position);
             }
@@ -168,14 +186,7 @@ namespace _3LW
 
         private void GameTimer_Tick(object sender, EventArgs e)
         {
-            TimeSpan diff = DateTime.Now - _timeStartGame;
-            string timeString = "";
-            if (diff.Hours > 0)
-                timeString = $"{diff.Hours} ч. ";
-            if (diff.Minutes > 0)
-                timeString += $"{diff.Minutes} мин. ";
-            timeString += $"{diff.Seconds} сек.";
-            statusBarTimer.Text = $"{_barTimerTemplate}{timeString}";
+            UpdateStatusBar(false);
         }
 
         private void Difficulty_Change(object sender, EventArgs e)
@@ -193,14 +204,69 @@ namespace _3LW
         {
             string operation = (string)((ToolStripMenuItem)sender).Tag;
             FeatureData featureData = _undoFeatureData[operation];
-            Storage.FieldChange change = featureData.Handler();
-            if (change.NewPosition != change.OldPosition)
+            if (featureData.Checker())
             {
-                _buttonsArray[(int)change.NewPosition].Select();
-                RefreshGrid();
-            }
+                Storage.FieldChange change = featureData.Handler();
+                if (change.NewPosition != change.OldPosition)
+                {
+                    _buttonsArray[(int)change.NewPosition].Select();
+                    RefreshGrid();
+                }
 
-            UpdateHistoryButtonsStatus();
+                UpdateHistoryButtonsStatus();
+                UpdateStatusBar(false);
+
+                if (_game.IsGameFinished())
+                    GameFinish();
+            }
+        }
+        private void LetterHandler(Keys key)
+        {
+            GameCoordinate tmp;
+            switch (key)
+            {
+                case Keys.W:
+                case Keys.Up:
+                    tmp = new GameCoordinate(_game.EmptyCell.X, _game.EmptyCell.Y - 1, _game.FieldHeight);
+                    if (_game.IsValidCoordinate(tmp))
+                        Shift(tmp);
+                    break;
+                case Keys.A:
+                case Keys.Left:
+                    tmp = new GameCoordinate(_game.EmptyCell.X - 1, _game.EmptyCell.Y, _game.FieldHeight);
+                    if (_game.IsValidCoordinate(tmp))
+                        Shift(tmp);
+                    break;
+                case Keys.S:
+                case Keys.Down:
+                    tmp = new GameCoordinate(_game.EmptyCell.X, _game.EmptyCell.Y + 1, _game.FieldHeight);
+                    if (_game.IsValidCoordinate(tmp))
+                        Shift(tmp);
+                    break;
+                case Keys.D:
+                case Keys.Right:
+                    tmp = new GameCoordinate(_game.EmptyCell.X + 1, _game.EmptyCell.Y, _game.FieldHeight);
+                    if (_game.IsValidCoordinate(tmp))
+                        Shift(tmp);
+                    break;
+                case Keys.G:
+                    GameStart();
+                    break;
+                case Keys.U:
+                    UndoMove_Handler(undoMove, null);
+                    break;
+                case Keys.R:
+                    UndoMove_Handler(redoMove, null);
+                    break;
+                default:
+                    break;
+            }
+        }
+        private void Fifteen_KeyDown(object sender, KeyEventArgs e)
+        {
+            bool onlyLetterPressed = !e.Control && !e.Shift && !e.Alt;
+            if (onlyLetterPressed)
+                LetterHandler(e.KeyCode);
         }
     }
 }

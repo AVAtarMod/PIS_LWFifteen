@@ -32,9 +32,6 @@
             this.menu = new System.Windows.Forms.MenuStrip();
             this.startMenu = new System.Windows.Forms.ToolStripMenuItem();
             this.difficultyList = new System.Windows.Forms.ToolStripMenuItem();
-            this.difficultyEasy = new System.Windows.Forms.ToolStripMenuItem();
-            this.difficultyNormal = new System.Windows.Forms.ToolStripMenuItem();
-            this.difficultyHard = new System.Windows.Forms.ToolStripMenuItem();
             this.undoMove = new System.Windows.Forms.ToolStripMenuItem();
             this.redoMove = new System.Windows.Forms.ToolStripMenuItem();
             this.table = new System.Windows.Forms.TableLayoutPanel();
@@ -58,6 +55,9 @@
             this.statusBarTimer = new System.Windows.Forms.ToolStripStatusLabel();
             this.statusBarMoveCount = new System.Windows.Forms.ToolStripStatusLabel();
             this.gameTimer = new System.Windows.Forms.Timer(this.components);
+            this.difficultyEasy = new System.Windows.Forms.ToolStripMenuItem();
+            this.difficultyNormal = new System.Windows.Forms.ToolStripMenuItem();
+            this.difficultyHard = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             this.table.SuspendLayout();
             this.statusStrip1.SuspendLayout();
@@ -80,8 +80,8 @@
             // startMenu
             // 
             this.startMenu.Name = "startMenu";
-            this.startMenu.Size = new System.Drawing.Size(123, 29);
-            this.startMenu.Text = "Начать игру";
+            this.startMenu.Size = new System.Drawing.Size(150, 29);
+            this.startMenu.Text = "Начать игру (G)";
             this.startMenu.Click += new System.EventHandler(this.StartMenu_Click);
             // 
             // difficultyList
@@ -94,44 +94,20 @@
             this.difficultyList.Size = new System.Drawing.Size(186, 29);
             this.difficultyList.Text = "Уровень сложности";
             // 
-            // difficultyEasy
-            // 
-            this.difficultyEasy.Name = "difficultyEasy";
-            this.difficultyEasy.Size = new System.Drawing.Size(204, 30);
-            this.difficultyEasy.Tag = _3LW.GameDifficulty.Easy;
-            this.difficultyEasy.Text = "Легкий";
-            this.difficultyEasy.Click += new System.EventHandler(this.Difficulty_Change);
-            // 
-            // difficultyNormal
-            // 
-            this.difficultyNormal.Name = "difficultyNormal";
-            this.difficultyNormal.Size = new System.Drawing.Size(204, 30);
-            this.difficultyNormal.Tag = _3LW.GameDifficulty.Normal;
-            this.difficultyNormal.Text = "Нормальный";
-            this.difficultyNormal.Click += new System.EventHandler(this.Difficulty_Change);
-            // 
-            // difficultyHard
-            // 
-            this.difficultyHard.Name = "difficultyHard";
-            this.difficultyHard.Size = new System.Drawing.Size(204, 30);
-            this.difficultyHard.Tag = _3LW.GameDifficulty.Hard;
-            this.difficultyHard.Text = "Сложный";
-            this.difficultyHard.Click += new System.EventHandler(this.Difficulty_Change);
-            // 
             // undoMove
             // 
             this.undoMove.Name = "undoMove";
-            this.undoMove.Size = new System.Drawing.Size(158, 29);
+            this.undoMove.Size = new System.Drawing.Size(185, 29);
             this.undoMove.Tag = "Undo";
-            this.undoMove.Text = "Отменить ход ↩";
+            this.undoMove.Text = "Отменить ход ↩ (U)";
             this.undoMove.Click += new System.EventHandler(this.UndoMove_Handler);
             // 
-            // undoMoveCancel
+            // redoMove
             // 
-            this.redoMove.Name = "undoMoveCancel";
-            this.redoMove.Size = new System.Drawing.Size(144, 29);
+            this.redoMove.Name = "redoMove";
+            this.redoMove.Size = new System.Drawing.Size(170, 29);
             this.redoMove.Tag = "Redo";
-            this.redoMove.Text = "Вернуть ход ↪";
+            this.redoMove.Text = "Вернуть ход ↪ (R)";
             this.redoMove.Click += new System.EventHandler(this.UndoMove_Handler);
             // 
             // table
@@ -404,6 +380,30 @@
             // 
             this.gameTimer.Tick += new System.EventHandler(this.GameTimer_Tick);
             // 
+            // difficultyEasy
+            // 
+            this.difficultyEasy.Name = "difficultyEasy";
+            this.difficultyEasy.Size = new System.Drawing.Size(204, 30);
+            this.difficultyEasy.Tag = _3LW.GameDifficulty.Easy;
+            this.difficultyEasy.Text = "Легкий";
+            this.difficultyEasy.Click += new System.EventHandler(this.Difficulty_Change);
+            // 
+            // difficultyNormal
+            // 
+            this.difficultyNormal.Name = "difficultyNormal";
+            this.difficultyNormal.Size = new System.Drawing.Size(204, 30);
+            this.difficultyNormal.Tag = _3LW.GameDifficulty.Normal;
+            this.difficultyNormal.Text = "Нормальный";
+            this.difficultyNormal.Click += new System.EventHandler(this.Difficulty_Change);
+            // 
+            // difficultyHard
+            // 
+            this.difficultyHard.Name = "difficultyHard";
+            this.difficultyHard.Size = new System.Drawing.Size(204, 30);
+            this.difficultyHard.Tag = _3LW.GameDifficulty.Hard;
+            this.difficultyHard.Text = "Сложный";
+            this.difficultyHard.Click += new System.EventHandler(this.Difficulty_Change);
+            // 
             // Fifteen
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
@@ -412,10 +412,12 @@
             this.Controls.Add(this.table);
             this.Controls.Add(this.menu);
             this.Controls.Add(this.statusStrip1);
+            this.KeyPreview = true;
             this.MainMenuStrip = this.menu;
             this.MinimumSize = new System.Drawing.Size(478, 322);
             this.Name = "Fifteen";
             this.Text = "Пятнашки";
+            this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.Fifteen_KeyDown);
             this.menu.ResumeLayout(false);
             this.menu.PerformLayout();
             this.table.ResumeLayout(false);
